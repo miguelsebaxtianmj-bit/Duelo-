@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Admin — Duelo de Elementos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Panel de administración</h1>
+      <p>Personaliza imágenes y sonidos del juego</p>
+    </div>
+    <a class="btn ghost" href="index.html">← Volver al juego</a>
+  </header>
+
+  <div class="admin-panel">
+    <h2>Imágenes y sonido por elemento</h2>
+    <p class="hint">Sube una imagen y un sonido para cada elemento. Se guardan en este navegador y el juego los usará automáticamente.</p>
+    <div id="adminList"></div>
+
+    <div class="sounds">
+      <h2 style="font-size:1rem;">Sonidos del juego</h2>
+      <div class="admin-row">
+        <div class="name">Victoria</div>
+        <label class="up">Subir audio<input type="file" accept="audio/*" data-sound="win"></label>
+        <button class="clear" data-clearsound="win">Quitar</button>
+      </div>
+      <div class="admin-row">
+        <div class="name">Derrota</div>
+        <label class="up">Subir audio<input type="file" accept="audio/*" data-sound="lose"></label>
+        <button class="clear" data-clearsound="lose">Quitar</button>
+      </div>
+      <div class="admin-row">
+        <div class="name">Empate</div>
+        <label class="up">Subir audio<input type="file" accept="audio/*" data-sound="draw"></label>
+        <button class="clear" data-clearsound="draw">Quitar</button>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;">
+      <button class="btn ghost" id="resetAssets">Restaurar imágenes/sonidos por defecto</button>
+    </div>
+  </div>
+</div>
+
+<div class="lock" id="lock">
+  <div class="box">
+    <h3>Acceso admin</h3>
+    <input type="password" id="lockInput" placeholder="Contraseña">
+    <button class="btn primary" id="lockGo" style="width:100%;">Entrar</button>
+    <p class="hint" style="margin-top:8px;">Contraseña por defecto: admin</p>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+let store = loadStore();
+
+const adminList = document.getElementById('adminList');
+const lock = document.getElementById('lock');
+
+document.getElementById('lockGo').onclick = tryUnlock;
+document.getElementById('lockInput').addEventListener('keydown', e=>{ if(e.key === 'Enter') tryUnlock(); });
+
+function tryUnlock(){
+  const v = document.getElementById('lockInput').value;
+  if(v === ADMIN_PASS){
+    lock.classList.add('hidden');
+    renderAdminList();
+  } else {
+    document.getElementById('lockInput').style.borderColor = 'var(--rose)';
+  }
+}
+
+function renderAdminList(){
+  adminList.innerHTML = '';
+  TIER.elements.forEach(el=>{
+    const key = TIER_ID + '_' + el;
+    const soundKey = 'el_' + el;
+    const row = document.createElement('div');
+    row.className = 'admin-row';
+    row.innerHTML = `
+      <div class="icon">${iconHTML(el, store)}</div>
+      <div class="name">${LABELS[el]}</div>
+      <div class="admin-actions">
+        <label class="up">Imagen<input type="file" accept="image/*" data-img="${key}"></label>
+        <button class="clear" data-clearimg="${key}">Quitar img</button>
+        <label class="up">Sonido<input type="file" accept="audio/*" data-elsound="${soundKey}"></label>
+        <button class="clear" data-clearelsound="${soundKey}">Quitar audio</button>
+      </div>
+    `;
+    adminList.appendChild(row);
+  });
+}
+
+adminList.addEventListener('change', e=>{
+  const t = e.target;
+  if(t.dataset.img){
+    const file = t.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{ store.images[t.dataset.img] = reader.result; saveStore(store); renderAdminList(); };
+    reader.readAsDataURL(file);
+  }
+  if(t.dataset.elsound){
+    const file = t.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{ store.sounds[t.dataset.elsound] = reader.result; saveStore(store); };
+    reader.readAsDataURL(file);
+  }
+});
+adminList.addEventListener('click', e=>{
+  const t = e.target;
+  if(t.dataset.clearimg){
+    delete store.images[t.dataset.clearimg]; saveStore(store); renderAdminList();
+  }
+  if(t.dataset.clearelsound){
+    delete store.sounds[t.dataset.clearelsound]; saveStore(store);
+  }
+});
+
+document.querySelectorAll('input[data-sound]').forEach(inp=>{
+  inp.addEventListener('change', ()=>{
+    const kind = inp.dataset.sound; const file = inp.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{ store.sounds[kind] = reader.result; saveStore(store); };
+    reader.readAsDataURL(file);
+  });
+});
+document.querySelectorAll('[data-clearsound]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ delete store.sounds[btn.dataset.clearsound]; saveStore(store); });
+});
+
+document.getElementById('resetAssets').onclick = ()=>{
+  store = {images:{}, sounds:{}}; saveStore(store); renderAdminList();
+};
+</script>
+</body>
+</html>
