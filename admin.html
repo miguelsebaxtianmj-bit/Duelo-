@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Admin — Duelo de Elementos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Panel de administración</h1>
+      <p>Personaliza imágenes y sonidos del juego</p>
+    </div>
+    <a class="btn ghost" href="index.html">← Volver al juego</a>
+  </header>
+
+  <div class="admin-panel">
+    <h2>Imágenes y sonido por elemento</h2>
+    <p class="hint">Cada elemento ya viene con una imagen/emoji y un sonido de fábrica. Si subís los tuyos, reemplazan a los de fábrica en este navegador; si tocás "Quitar", vuelve a usarse el de fábrica.</p>
+    <div id="adminList"></div>
+
+    <div class="sounds">
+      <h2 style="font-size:1rem;">Sonidos del juego</h2>
+      <div class="admin-row">
+        <div class="name">Victoria</div>
+        <label class="up">Subir audio<input type="file" accept="audio/*" data-sound="win"></label>
+        <span class="audio-badge factory" data-globalbadge="win" title="Sonido de fábrica">🔊 fábrica</span>
+        <button class="clear" data-clearsound="win">Quitar</button>
+      </div>
+      <div class="admin-row">
+        <div class="name">Derrota</div>
+        <label class="up">Subir audio<input type="file" accept="audio/*" data-sound="lose"></label>
+        <span class="audio-badge factory" data-globalbadge="lose" title="Sonido de fábrica">🔊 fábrica</span>
+        <button class="clear" data-clearsound="lose">Quitar</button>
+      </div>
+      <div class="admin-row">
+        <div class="name">Empate</div>
+        <label class="up">Subir audio<input type="file" accept="audio/*" data-sound="draw"></label>
+        <span class="audio-badge factory" data-globalbadge="draw" title="Sonido de fábrica">🔊 fábrica</span>
+        <button class="clear" data-clearsound="draw">Quitar</button>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;">
+      <button class="btn ghost" id="resetAssets">Restaurar imágenes/sonidos por defecto</button>
+    </div>
+  </div>
+</div>
+
+<div class="lock" id="lock">
+  <div class="box">
+    <h3>Acceso</h3>
+    <input type="password" id="lockInput" placeholder="Contraseña">
+    <button class="btn primary" id="lockGo" style="width:100%;">Entrar</button>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+let store = emptyStore();
+let storeReady = loadStore().then(s => { store = s; });
+
+const adminList = document.getElementById('adminList');
+const lock = document.getElementById('lock');
+
+document.getElementById('lockGo').onclick = tryUnlock;
+document.getElementById('lockInput').addEventListener('keydown', e=>{ if(e.key === 'Enter') tryUnlock(); });
+
+async function tryUnlock(){
+  const v = document.getElementById('lockInput').value;
+  if(v === ADMIN_PASS){
+    await storeReady;
+    lock.classList.add('hidden');
+    renderAdminList();
+    renderGlobalSoundBadges();
+  } else {
+    document.getElementById('lockInput').style.borderColor = 'var(--rose)';
+  }
+}
+
+function renderAdminList(){
+  adminList.innerHTML = '';
+  TIER.elements.forEach(el=>{
+    const key = TIER_ID + '_' + el;
+    const soundKey = 'el_' + el;
+    const isCustom = !!store.sounds[soundKey];
+    const row = document.createElement('div');
+    row.className = 'admin-row';
+    row.innerHTML = `
+      <div class="icon">${iconHTML(el, store)}</div>
+      <div class="name">${LABELS[el]}</div>
+      <div class="admin-actions">
+        <label class="up">Imagen<input type="file" accept="image/*" data-img="${key}"></label>
+        <button class="clear" data-clearimg="${key}">Quitar img</button>
+        <label class="up">Sonido<input type="file" accept="audio/*" data-elsound="${soundKey}"></label>
+        <span class="audio-badge ${isCustom ? '' : 'factory'}" data-badge="${soundKey}" title="${isCustom ? 'Sonido subido por vos' : 'Sonido de fábrica'}">🔊 ${isCustom ? 'tuyo' : 'fábrica'}</span>
+        <button class="clear" data-clearelsound="${soundKey}">Quitar audio</button>
+      </div>
+    `;
+    adminList.appendChild(row);
+  });
+}
+
+function updateAudioBadge(soundKey){
+  const badge = adminList.querySelector(`[data-badge="${soundKey}"]`);
+  if(!badge) return;
+  const isCustom = !!store.sounds[soundKey];
+  badge.classList.toggle('factory', !isCustom);
+  badge.title = isCustom ? 'Sonido subido por vos' : 'Sonido de fábrica';
+  badge.textContent = `🔊 ${isCustom ? 'tuyo' : 'fábrica'}`;
+}
+
+function renderGlobalSoundBadges(){
+  ['win','lose','draw'].forEach(kind=>{
+    const badge = document.querySelector(`[data-globalbadge="${kind}"]`);
+    if(!badge) return;
+    const isCustom = !!store.sounds[kind];
+    badge.classList.toggle('factory', !isCustom);
+    badge.title = isCustom ? 'Sonido subido por vos' : 'Sonido de fábrica';
+    badge.textContent = `🔊 ${isCustom ? 'tuyo' : 'fábrica'}`;
+  });
+}
+
+adminList.addEventListener('change', async e=>{
+  const t = e.target;
+  if(t.dataset.img){
+    const file = t.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async ()=>{
+      const prev = store.images[t.dataset.img];
+      store.images[t.dataset.img] = reader.result;
+      const ok = await saveStore(store);
+      if(!ok){
+        if(prev) store.images[t.dataset.img] = prev; else delete store.images[t.dataset.img];
+        avisarSinEspacio();
+      }
+      renderAdminList();
+    };
+    reader.readAsDataURL(file);
+  }
+  if(t.dataset.elsound){
+    const file = t.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async ()=>{
+      const key = t.dataset.elsound;
+      const prev = store.sounds[key];
+      store.sounds[key] = reader.result;
+      const ok = await saveStore(store);
+      if(!ok){
+        if(prev) store.sounds[key] = prev; else delete store.sounds[key];
+        avisarSinEspacio();
+      } else {
+        t.value = '';
+      }
+      updateAudioBadge(key);
+    };
+    reader.readAsDataURL(file);
+  }
+});
+adminList.addEventListener('click', async e=>{
+  const t = e.target;
+  if(t.dataset.clearimg){
+    delete store.images[t.dataset.clearimg];
+    await saveStore(store);
+    renderAdminList();
+  }
+  if(t.dataset.clearelsound){
+    delete store.sounds[t.dataset.clearelsound];
+    await saveStore(store);
+    updateAudioBadge(t.dataset.clearelsound);
+  }
+});
+
+document.querySelectorAll('input[data-sound]').forEach(inp=>{
+  inp.addEventListener('change', ()=>{
+    const kind = inp.dataset.sound; const file = inp.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async ()=>{
+      const prev = store.sounds[kind];
+      store.sounds[kind] = reader.result;
+      const ok = await saveStore(store);
+      if(!ok){ if(prev) store.sounds[kind] = prev; else delete store.sounds[kind]; avisarSinEspacio(); }
+      inp.value = '';
+      renderGlobalSoundBadges();
+    };
+    reader.readAsDataURL(file);
+  });
+});
+
+function avisarSinEspacio(){
+  alert('No se pudo guardar el archivo: el almacenamiento del navegador está lleno o no disponible. Probá quitar alguna imagen/audio ya subido, usar un archivo más liviano, o revisar que el navegador no esté en modo privado/incógnito con almacenamiento restringido.');
+}
+document.querySelectorAll('[data-clearsound]').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    delete store.sounds[btn.dataset.clearsound];
+    await saveStore(store);
+    renderGlobalSoundBadges();
+  });
+});
+
+document.getElementById('resetAssets').onclick = async ()=>{
+  if(!confirm('¿Seguro que quieres restaurar todo a los valores por defecto? Esto borra todas las imágenes y sonidos subidos.')) return;
+  store = emptyStore();
+  await saveStore(store);
+  renderAdminList();
+  renderGlobalSoundBadges();
+};
+
+// Si se edita desde otra pestaña (poco probable en admin, pero por consistencia)
+onStoreChange(async ()=>{
+  store = await loadStore();
+  if(!lock.classList.contains('hidden')) return; // todavía bloqueado
+  renderAdminList();
+  renderGlobalSoundBadges();
+});
+</script>
+</body>
+</html>
