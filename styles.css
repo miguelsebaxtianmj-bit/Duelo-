@@ -114,3 +114,20 @@ footer{display:flex;justify-content:center;margin-top:10px;}
   background:var(--card); color:var(--ink); font-family:inherit; margin-bottom:10px;
 }
 .hidden{display:none !important;}
+
+/* Selección de modo y multijugador */
+.mode-options{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:16px;}
+.mode-card{
+  flex:1 1 200px; max-width:260px; background:var(--card); border:1px solid var(--line);
+  border-radius:14px; padding:20px 16px; text-align:center; cursor:pointer; color:var(--ink);
+  font-family:inherit; transition:border-color .15s, transform .1s;
+}
+.mode-card:hover{border-color:var(--teal); transform:translateY(-2px);}
+.mode-card strong{display:block;font-size:1rem;margin-bottom:4px;}
+.mode-card span{font-size:.8rem;color:var(--sub);}
+.mode-icon{font-size:2rem;margin-bottom:8px;}
+.counter{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:14px;}
+.counter span{font-family:'Space Grotesk',sans-serif;font-size:1.6rem;font-weight:700;min-width:30px;text-align:center;}
+.handoff-msg{text-align:center;padding:20px 0;}
+.handoff-msg h2{font-size:1.1rem;margin:0 0 6px;}
+.reveal-grid{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;}
