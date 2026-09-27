@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Duelo de Elementos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Duelo de Elementos</h1>
+      <p>15 elementos — piedra, papel, tijera, pistola, rayo, dragón, agua, aire, esponja, lobo, árbol, humano, serpiente, fuego y diablo</p>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn ghost" id="themeBtn" title="Cambiar tema">◐</button>
+      <a class="btn" href="admin.html">Admin</a>
+    </div>
+  </header>
+
+  <div class="board">
+    <div class="score">
+      <div><div class="n" id="scoreWin">0</div><div class="l">Ganadas</div></div>
+      <div><div class="n" id="scoreDraw">0</div><div class="l">Empates</div></div>
+      <div><div class="n" id="scoreLose">0</div><div class="l">Perdidas</div></div>
+    </div>
+
+    <div class="result">
+      <div class="verdict" id="verdict">Elige tu jugada</div>
+      <div class="detail" id="detail"></div>
+    </div>
+
+    <div class="picks">
+      <div class="pick"><div class="icon" id="youIcon">?</div><div class="name">Tú</div></div>
+      <div class="pick"><div class="icon" id="cpuIcon">?</div><div class="name">Rival</div></div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <footer>
+      <button class="btn ghost" id="resetScore">Reiniciar marcador</button>
+    </footer>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+let store = loadStore();
+let score = {win:0, draw:0, lose:0};
+
+const grid = document.getElementById('grid');
+const verdictEl = document.getElementById('verdict');
+const detailEl = document.getElementById('detail');
+const youIcon = document.getElementById('youIcon');
+const cpuIcon = document.getElementById('cpuIcon');
+
+function renderGrid(){
+  grid.innerHTML = '';
+  TIER.elements.forEach(el=>{
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.innerHTML = `<div class="icon">${iconHTML(el, store)}</div><div class="name">${LABELS[el]}</div>`;
+    b.onclick = ()=> play(el);
+    grid.appendChild(b);
+  });
+}
+
+function playSound(kind){
+  const url = store.sounds[kind];
+  if(!url) return;
+  try{ new Audio(url).play().catch(()=>{}); }catch(e){}
+}
+
+function play(youChoice){
+  const opts = TIER.elements;
+  const cpuChoice = opts[Math.floor(Math.random()*opts.length)];
+  youIcon.innerHTML = iconHTML(youChoice, store);
+  cpuIcon.innerHTML = iconHTML(cpuChoice, store);
+
+  let outcome;
+  if(youChoice === cpuChoice) outcome = 'draw';
+  else if(TIER.beats[youChoice].includes(cpuChoice)) outcome = 'win';
+  else outcome = 'lose';
+
+  if(outcome === 'win'){
+    score.win++; verdictEl.textContent = '¡Ganaste!'; verdictEl.className = 'verdict win';
+    detailEl.textContent = `${LABELS[youChoice]} vence a ${LABELS[cpuChoice]}`;
+    playSound('win');
+  } else if(outcome === 'lose'){
+    score.lose++; verdictEl.textContent = 'Perdiste'; verdictEl.className = 'verdict lose';
+    detailEl.textContent = `${LABELS[cpuChoice]} vence a ${LABELS[youChoice]}`;
+    playSound('lose');
+  } else {
+    score.draw++; verdictEl.textContent = 'Empate'; verdictEl.className = 'verdict draw';
+    detailEl.textContent = `Ambos eligieron ${LABELS[youChoice]}`;
+    playSound('draw');
+  }
+  updateScore();
+}
+
+function updateScore(){
+  document.getElementById('scoreWin').textContent = score.win;
+  document.getElementById('scoreDraw').textContent = score.draw;
+  document.getElementById('scoreLose').textContent = score.lose;
+}
+
+document.getElementById('resetScore').onclick = ()=>{
+  score = {win:0, draw:0, lose:0}; updateScore();
+  youIcon.innerHTML = '?'; cpuIcon.innerHTML = '?';
+  verdictEl.textContent = 'Elige tu jugada'; verdictEl.className = 'verdict';
+  detailEl.textContent = '';
+};
+
+document.getElementById('themeBtn').onclick = ()=>{
+  const r = document.documentElement;
+  r.setAttribute('data-theme', r.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+};
+
+// refresca las imágenes si el admin las cambió en otra pestaña
+window.addEventListener('storage', e=>{
+  if(e.key === STORE_KEY){ store = loadStore(); renderGrid(); }
+});
+
+renderGrid();
+updateScore();
+</script>
+</body>
+</html>
